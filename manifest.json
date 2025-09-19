@@ -1,0 +1,63 @@
+{
+  "name": "business-assistant",
+  "version": "1.0",
+  "tools": [
+    {
+      "name": "create_appointment",
+      "description": "Creates an appointment for a customer",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "customer_name": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" }
+        },
+        "required": ["customer_name", "date"]
+      }
+    },
+    {
+      "name": "update_appointment",
+      "description": "Updates an existing appointment",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "appointment_id": { 
+            "type": "integer",
+            "description": "ID of the appointment to update"
+          },
+          "customer_name": { 
+            "type": "string",
+            "description": "New customer name (optional)"
+          },
+          "date": { 
+            "type": "string",
+            "description": "New date for the appointment (optional)"
+          }
+        },
+        "required": ["appointment_id"]
+      }
+    },
+    {
+      "name": "list_appointments",
+      "description": "Lists all appointments",
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      }
+    },
+    {
+      "name": "delete_appointment",
+      "description": "Deletes an appointment by ID",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "appointment_id": {
+            "type": "integer",
+            "description": "ID of the appointment to delete"
+          }
+        },
+        "required": ["appointment_id"]
+      }
+    }
+  ]
+}
