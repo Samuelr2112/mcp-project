@@ -8,10 +8,17 @@
       "input_schema": {
         "type": "object",
         "properties": {
-          "customer_name": { "type": "string" },
-          "date": { "type": "string", "format": "date-time" }
+          "customer_name": {
+            "type": "string",
+            "description": "Name of the customer (example: Jose Sanfiel)"
+          },
+          "date": {
+            "type": "string",
+            "description": "Date and time in ISO 8601 format (example: 2025-09-26T10:55:00)"
+          }
         },
-        "required": ["customer_name", "date"]
+        "required": ["customer_name", "date"],
+        "additionalProperties": false
       }
     },
     {
@@ -20,17 +27,17 @@
       "input_schema": {
         "type": "object",
         "properties": {
-          "appointment_id": { 
+          "appointment_id": {
             "type": "integer",
             "description": "ID of the appointment to update"
           },
-          "customer_name": { 
+          "customer_name": {
             "type": "string",
             "description": "New customer name (optional)"
           },
-          "date": { 
+          "date": {
             "type": "string",
-            "description": "New date for the appointment (optional)"
+            "description": "New date and time in ISO 8601 format (example: 2025-09-27T14:00:00)"
           }
         },
         "required": ["appointment_id"]

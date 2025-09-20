@@ -1,61 +1,60 @@
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy import create_engine, String, Integer, DateTime
+from sqlalchemy.orm import sessionmaker, declarative_base, Session, Mapped, mapped_column
 from datetime import datetime
+from dateutil import parser
 import os
 
 # -----------------------------
 # Database Configuration
 # -----------------------------
-# DATABASE_URL will come from environment variables (set in docker-compose.yml)
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg2://samuel:mypassword@db:5432/appointments_db"
 )
 
-# Create the database engine and session
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # -----------------------------
-# Database Model (Appointment table)
+# Database Model
 # -----------------------------
 class AppointmentDB(Base):
     __tablename__ = "appointments"
 
-    id = Column(Integer, primary_key=True, index=True)
-    customer_name = Column(String, nullable=False)
-    date = Column(String, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    customer_name: Mapped[str] = mapped_column(String, nullable=False)
+    date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
-# Create the table in the database (if it doesn't exist)
 Base.metadata.create_all(bind=engine)
 
 # -----------------------------
 # FastAPI App
 # -----------------------------
 app = FastAPI(
-    title="MCP Server with Postgres",
+    title="Business Assistant API",
     version="1.0.0",
-    description="Simple API to create and list appointments using FastAPI + PostgreSQL",
-    servers=[
-        {"url": "http://localhost:8000", "description": "Local development server"}
-    ]
+    description="API to manage appointments with FastAPI and PostgreSQL",
 )
 
 # -----------------------------
-# Pydantic Schemas
+# Schemas
 # -----------------------------
-class Appointment(BaseModel):
+class CreateAppointment(BaseModel):
     customer_name: str
-    date: str  # Puede venir en ISO o ya formateada
+    date: str
 
-class AppointmentUpdate(BaseModel):
+class UpdateAppointment(BaseModel):
+    appointment_id: int
     customer_name: str | None = None
     date: str | None = None
 
-# Dependency: Get a database session
+class DeleteAppointment(BaseModel):
+    appointment_id: int
+
+# Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -64,93 +63,98 @@ def get_db():
         db.close()
 
 # -----------------------------
-# Routes (Endpoints)
+# Utility function: safe date formatting
 # -----------------------------
-
-# Root endpoint (health check)
-@app.get("/")
-def root():
-    return {"message": "MCP server with Postgres is running 🚀"}
-
-# Create a new appointment
-@app.post("/create_appointment")
-def create_appointment(appointment: Appointment, db: Session = Depends(get_db)):
-    # Parse ISO date (ej: 2025-09-25T14:30:00) y convertir a formato humano
+def safe_format_date(value):
+    """Ensure consistent date formatting for datetime or string values."""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
     try:
-        parsed_date = datetime.fromisoformat(appointment.date)
-        formatted_date = parsed_date.strftime("%-d/%-m/%Y - %-I:%M%p").lower()
+        parsed = parser.parse(str(value))
+        return parsed.strftime("%Y-%m-%d %H:%M:%S")
     except Exception:
-        # Si ya viene formateada, guardamos directo
-        formatted_date = appointment.date
+        return str(value)
+
+# -----------------------------
+# Routes
+# -----------------------------
+@app.post("/create_appointment")
+def create_appointment(appointment: CreateAppointment, db: Session = Depends(get_db)):
+    try:
+        parsed_date = parser.parse(str(appointment.date))
+    except Exception:
+        return {"status": "error", "message": "Invalid date. Use ISO 8601 like '2025-09-26T10:55:00'"}
 
     db_appointment = AppointmentDB(
         customer_name=appointment.customer_name,
-        date=formatted_date
+        date=parsed_date
     )
-    db.add(db_appointment)
-    db.commit()
-    db.refresh(db_appointment)
-    return {
-        "status": "success",
-        "message": f"Appointment created for {appointment.customer_name} on {formatted_date}",
-        "id": db_appointment.id
-    }
 
-# List all appointments
+    try:
+        db.add(db_appointment)
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Appointment created for {appointment.customer_name} on {safe_format_date(parsed_date)}",
+            "id": db_appointment.id
+        }
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": f"Database error: {str(e)}"}
+
+@app.put("/update_appointment")
+def update_appointment(appointment: UpdateAppointment, db: Session = Depends(get_db)):
+    appt = db.query(AppointmentDB).filter(AppointmentDB.id == appointment.appointment_id).first()
+    if not appt:
+        return {"status": "error", "message": f"No appointment found with id {appointment.appointment_id}"}
+
+    if appointment.customer_name:
+        appt.customer_name = appointment.customer_name
+    if appointment.date:
+        try:
+            parsed_date = parser.parse(str(appointment.date))
+            appt.date = parsed_date
+        except Exception:
+            return {"status": "error", "message": "Invalid date format. Use ISO 8601."}
+
+    try:
+        db.commit()
+        return {
+            "status": "success",
+            "message": f"Appointment {appointment.appointment_id} updated successfully",
+            "appointment": {
+                "id": appt.id,
+                "customer_name": appt.customer_name,
+                "date": safe_format_date(appt.date)
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": f"Database error: {str(e)}"}
+
 @app.get("/list_appointments")
 def list_appointments(db: Session = Depends(get_db)):
     appointments = db.query(AppointmentDB).all()
-    return appointments
+    results = []
+    for a in appointments:
+        results.append({
+            "id": a.id,
+            "customer_name": a.customer_name,
+            "date": safe_format_date(a.date)
+        })
+    return results
 
-# Delete an appointment by ID
-@app.delete("/delete_appointment/{appointment_id}")
-def delete_appointment(appointment_id: int, db: Session = Depends(get_db)):
-    appointment = db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).first()
-    if not appointment:
-        return {
-            "status": "error",
-            "message": f"No appointment found with id {appointment_id}"
-        }
+@app.delete("/delete_appointment")
+def delete_appointment(payload: DeleteAppointment, db: Session = Depends(get_db)):
+    appointment_id = payload.appointment_id
+    appt = db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).first()
+    if not appt:
+        return {"status": "error", "message": f"No appointment found with id {appointment_id}"}
 
-    db.delete(appointment)
-    db.commit()
-    return {
-        "status": "success",
-        "message": f"Appointment with id {appointment_id} has been deleted"
-    }
-
-# Update an appointment by ID
-@app.put("/update_appointment/{appointment_id}")
-def update_appointment(appointment_id: int, appointment_update: AppointmentUpdate, db: Session = Depends(get_db)):
-    appointment = db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).first()
-    if not appointment:
-        return {
-            "status": "error",
-            "message": f"No appointment found with id {appointment_id}"
-        }
-
-    update_data = {}
-    if appointment_update.customer_name is not None:
-        update_data["customer_name"] = appointment_update.customer_name
-
-    if appointment_update.date is not None:
-        try:
-            parsed_date = datetime.fromisoformat(appointment_update.date)
-            update_data["date"] = parsed_date.strftime("%-d/%-m/%Y - %-I:%M%p").lower()
-        except Exception:
-            update_data["date"] = appointment_update.date
-
-    if update_data:
-        db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).update(update_data)
+    try:
+        db.delete(appt)
         db.commit()
-        db.refresh(appointment)
-
-    return {
-        "status": "success",
-        "message": f"Appointment {appointment_id} updated successfully",
-        "appointment": {
-            "id": appointment.id,
-            "customer_name": appointment.customer_name,
-            "date": appointment.date
-        }
-    }
+        return {"status": "success", "message": f"Appointment with id {appointment_id} has been deleted"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": f"Database error: {str(e)}"}
