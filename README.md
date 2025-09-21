@@ -36,26 +36,40 @@ This repository marks the second checkpoint of my MCP project. At this stage, th
 
 ## 🔥 Natural Language Examples  
 
-Claude can now interpret natural language and convert it into valid API requests automatically.  
+### 1. Create appointment
+**Generic prompt:**  
+Create an appointment for **[customer_name]** on **[date in format yyyy-mm-ddTHH:MM:SS]**
 
-### Create  
-- “Add an appointment for [Name] on [Date] at [Time]”  
-- “Create an appointment for [Name] on [Date] at [Time]”  
+**Example:**  
+Create an appointment for **Pedro Martinez** on **2025-09-26T11:00:00**
 
-### List  
-- “Show me all appointments”  
-- “List my scheduled appointments”  
-- “What appointments do I have?”  
+---
 
-### Update  
-- “Edit the appointment with ID [ID] and change the name to [NewName]”  
-- “Change the appointment ID [ID] to [Date] at [Time]”  
-- “Update appointment ID [ID] so the client is [NewName] and the date is [Date] at [Time]”  
+### 2. Update appointment
+**Generic prompt:**  
+Update the appointment with ID **[appointment_id]** and change it to **[new_date in format yyyy-mm-ddTHH:MM:SS]**  
+(Optional: also change the customer to **[new_customer_name]**)
 
-### Delete  
-- “Delete the appointment with ID [ID]”  
-- “Remove appointment number [ID]”  
-- “Cancel the appointment with ID [ID]”  
+**Example:**  
+Update the appointment with ID **8** and change it to **2025-09-27T14:00:00**
+
+---
+
+### 3. List appointments
+**Generic prompt:**  
+Show me all appointments
+
+**Example:**  
+Show me all appointments
+
+---
+
+### 4. Delete appointment
+**Generic prompt:**  
+Delete the appointment with ID **[appointment_id]**
+
+**Example:**  
+Delete the appointment with ID **8**
 
 ---
 
