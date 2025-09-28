@@ -36,7 +36,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Business Assistant API",
     version="1.0.0",
-    description="API to manage appointments with FastAPI and PostgreSQL",
+    description="Professional appointment management system with FastAPI and PostgreSQL",
 )
 
 # -----------------------------
@@ -83,7 +83,7 @@ def create_appointment(appointment: CreateAppointment, db: Session = Depends(get
     try:
         parsed_date = parser.parse(str(appointment.date))
     except Exception:
-        return {"status": "error", "message": "Invalid date. Use ISO 8601 like '2025-09-26T10:55:00'"}
+        return {"status": "error", "message": "Invalid date format. Please use ISO 8601 format (e.g., 2025-09-26T10:55:00)"}
 
     db_appointment = AppointmentDB(
         customer_name=appointment.customer_name,
@@ -95,7 +95,7 @@ def create_appointment(appointment: CreateAppointment, db: Session = Depends(get
         db.commit()
         return {
             "status": "success",
-            "message": f"Appointment created for {appointment.customer_name} on {safe_format_date(parsed_date)}",
+            "message": f"Appointment successfully created for {appointment.customer_name} on {safe_format_date(parsed_date)}",
             "id": db_appointment.id
         }
     except Exception as e:
@@ -106,7 +106,7 @@ def create_appointment(appointment: CreateAppointment, db: Session = Depends(get
 def update_appointment(appointment: UpdateAppointment, db: Session = Depends(get_db)):
     appt = db.query(AppointmentDB).filter(AppointmentDB.id == appointment.appointment_id).first()
     if not appt:
-        return {"status": "error", "message": f"No appointment found with id {appointment.appointment_id}"}
+        return {"status": "error", "message": f"Appointment with ID {appointment.appointment_id} not found"}
 
     if appointment.customer_name:
         appt.customer_name = appointment.customer_name
@@ -115,7 +115,7 @@ def update_appointment(appointment: UpdateAppointment, db: Session = Depends(get
             parsed_date = parser.parse(str(appointment.date))
             appt.date = parsed_date
         except Exception:
-            return {"status": "error", "message": "Invalid date format. Use ISO 8601."}
+            return {"status": "error", "message": "Invalid date format. Please use ISO 8601 format"}
 
     try:
         db.commit()
@@ -149,12 +149,12 @@ def delete_appointment(payload: DeleteAppointment, db: Session = Depends(get_db)
     appointment_id = payload.appointment_id
     appt = db.query(AppointmentDB).filter(AppointmentDB.id == appointment_id).first()
     if not appt:
-        return {"status": "error", "message": f"No appointment found with id {appointment_id}"}
+        return {"status": "error", "message": f"Appointment with ID {appointment_id} not found"}
 
     try:
         db.delete(appt)
         db.commit()
-        return {"status": "success", "message": f"Appointment with id {appointment_id} has been deleted"}
+        return {"status": "success", "message": f"Appointment with ID {appointment_id} has been successfully deleted"}
     except Exception as e:
         db.rollback()
         return {"status": "error", "message": f"Database error: {str(e)}"}

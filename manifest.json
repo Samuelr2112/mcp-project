@@ -1,6 +1,7 @@
 {
   "name": "business-assistant",
   "version": "1.0",
+  "description": "Professional appointment management system",
   "tools": [
     {
       "name": "create_appointment",
@@ -10,7 +11,7 @@
         "properties": {
           "customer_name": {
             "type": "string",
-            "description": "Name of the customer (example: Jose Sanfiel)"
+            "description": "Name of the customer (example: John Smith)"
           },
           "date": {
             "type": "string",
@@ -45,7 +46,7 @@
     },
     {
       "name": "list_appointments",
-      "description": "Lists all appointments",
+      "description": "Lists all scheduled appointments",
       "input_schema": {
         "type": "object",
         "properties": {},
