@@ -39,6 +39,7 @@ The integration is fully operational and tested, providing seamless communicatio
 ```bash
 wsl -d Ubuntu
 cd ~/mcp-project
+source venv/bin/activate
 docker-compose up --build -d
 docker-compose ps
 curl http://localhost:8000/list_appointments
